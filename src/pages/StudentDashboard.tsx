@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { QRCodeSVG } from "qrcode.react";
-import { Mail, IdCard, LogOut, Calendar, Clock, User } from "lucide-react";
+import { Mail, IdCard, LogOut, Calendar, Clock, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 interface Profile {
@@ -15,6 +16,7 @@ interface Profile {
   email: string;
   student_id: string;
   department: string;
+  avatar_url?: string;
 }
 
 interface AttendanceStats {
@@ -35,6 +37,8 @@ const StudentDashboard = () => {
   const [stats, setStats] = useState<AttendanceStats>({ present: 0, late: 0, absent: 0 });
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     checkAuth();
@@ -95,6 +99,51 @@ const StudentDashboard = () => {
     navigate("/");
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!profile) return;
+      
+      setUploading(true);
+      
+      if (!event.target.files || event.target.files.length === 0) {
+        return;
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${profile.id}/${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', profile.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setProfile({ ...profile, avatar_url: publicUrl });
+      
+      toast.success("Photo mise à jour avec succès");
+    } catch (error: any) {
+      toast.error(error.message || "Erreur lors de la mise à jour");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "present":
@@ -136,11 +185,33 @@ const StudentDashboard = () => {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
-                  <Avatar className="w-20 h-20 border-4 border-primary/20">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative group">
+                    <Avatar className="w-20 h-20 border-4 border-primary/20">
+                      <AvatarImage src={profile?.avatar_url} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      {uploading ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                      ) : (
+                        <Camera className="h-6 w-6 text-white" />
+                      )}
+                    </button>
+                    <Input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
+                  </div>
                   <div className="flex-1">
                     <h2 className="text-2xl font-bold mb-1">{profile?.full_name}</h2>
                     <p className="text-muted-foreground mb-3">{profile?.department}</p>
