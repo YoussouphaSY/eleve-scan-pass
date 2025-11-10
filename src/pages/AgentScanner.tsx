@@ -3,15 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { LogOut, ScanLine, CheckCircle } from "lucide-react";
+import { LogOut, ScanLine } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
 const AgentScanner = () => {
   const navigate = useNavigate();
   const [isScanning, setIsScanning] = useState(false);
-  const [status, setStatus] = useState<"present" | "late" | "absent">("present");
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
@@ -69,17 +67,46 @@ const AgentScanner = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Vérifier si l'élève a déjà été scanné aujourd'hui
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: existingRecord } = await supabase
+        .from("attendance_records")
+        .select("*")
+        .eq("student_id", decodedText)
+        .gte("date", today.toISOString())
+        .maybeSingle();
+
+      if (existingRecord) {
+        toast.error("Cet élève a déjà été scanné aujourd'hui");
+        return;
+      }
+
+      // Calculer le statut automatiquement en fonction de l'heure
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const currentTime = hours * 60 + minutes; // Convertir en minutes
+      const cutoffTime = 8 * 60 + 15; // 08h15 en minutes
+
+      let calculatedStatus: "present" | "late" = "present";
+      if (currentTime > cutoffTime) {
+        calculatedStatus = "late";
+      }
+
       const { error } = await supabase
         .from("attendance_records")
         .insert({
           student_id: decodedText,
-          status: status,
+          status: calculatedStatus,
           scanned_by: user.id,
         });
 
       if (error) throw error;
 
-      toast.success("Présence enregistrée avec succès!");
+      const statusText = calculatedStatus === "present" ? "Présent" : "Retard";
+      toast.success(`Présence enregistrée: ${statusText}`);
     } catch (error: any) {
       console.error("Error recording attendance:", error);
       toast.error("Erreur lors de l'enregistrement");
@@ -117,33 +144,13 @@ const AgentScanner = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Statut de présence</label>
-              <Select value={status} onValueChange={(value: any) => setStatus(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="present">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-success" />
-                      Présent
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="late">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-warning" />
-                      Retard
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="absent">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-destructive" />
-                      Absent
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="bg-accent/10 p-4 rounded-lg border border-accent/20">
+              <h3 className="font-semibold text-accent mb-2">Calcul automatique du statut</h3>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• <span className="text-success font-medium">Présent</span>: Scan entre 00h00 et 08h15</li>
+                <li>• <span className="text-warning font-medium">Retard</span>: Scan après 08h15</li>
+                <li>• <span className="text-destructive font-medium">Absent</span>: Non scanné de la journée</li>
+              </ul>
             </div>
 
             <div className="space-y-4">

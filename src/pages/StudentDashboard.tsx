@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QRCodeSVG } from "qrcode.react";
-import { Mail, IdCard, LogOut, Calendar, Clock, Camera } from "lucide-react";
+import { Mail, IdCard, LogOut, Calendar, Clock, Camera, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface Profile {
   id: string;
@@ -36,6 +38,8 @@ const StudentDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<AttendanceStats>({ present: 0, late: 0, absent: 0 });
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +80,7 @@ const StudentDashboard = () => {
 
       if (attendanceData) {
         setRecords(attendanceData);
+        setFilteredRecords(attendanceData);
         
         const statsData = attendanceData.reduce((acc, record) => {
           if (record.status === "present") acc.present++;
@@ -144,6 +149,15 @@ const StudentDashboard = () => {
     }
   };
 
+  const handleFilterChange = (filter: string) => {
+    setActiveFilter(filter);
+    if (filter === "all") {
+      setFilteredRecords(records);
+    } else {
+      setFilteredRecords(records.filter(record => record.status === filter));
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "present":
@@ -156,6 +170,35 @@ const StudentDashboard = () => {
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
+
+  // Préparer les données pour le graphique (7 derniers jours)
+  const chartData = (() => {
+    const last7Days = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const dayRecords = records.filter(record => {
+        const recordDate = new Date(record.date);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate.getTime() === date.getTime();
+      });
+      
+      const dayStats = {
+        date: date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+        présent: dayRecords.filter(r => r.status === "present").length,
+        retard: dayRecords.filter(r => r.status === "late").length,
+        absent: dayRecords.filter(r => r.status === "absent").length,
+      };
+      
+      last7Days.push(dayStats);
+    }
+    
+    return last7Days;
+  })();
 
   if (loading) {
     return (
@@ -267,16 +310,79 @@ const StudentDashboard = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Évolution des présences (7 derniers jours)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis 
+                      dataKey="date" 
+                      className="text-xs"
+                      tick={{ fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <YAxis 
+                      className="text-xs"
+                      tick={{ fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "var(--radius)"
+                      }}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="présent" 
+                      stroke="hsl(var(--success))" 
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--success))" }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="retard" 
+                      stroke="hsl(var(--warning))" 
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--warning))" }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="absent" 
+                      stroke="hsl(var(--destructive))" 
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--destructive))" }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
                   <Clock className="w-5 h-5" />
                   Historique de présence
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <Tabs value={activeFilter} onValueChange={handleFilterChange} className="mb-4">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="all">Tous</TabsTrigger>
+                    <TabsTrigger value="present">Présent</TabsTrigger>
+                    <TabsTrigger value="late">Retard</TabsTrigger>
+                    <TabsTrigger value="absent">Absent</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                
                 <div className="space-y-3">
-                  {records.length === 0 ? (
+                  {filteredRecords.length === 0 ? (
                     <p className="text-center text-muted-foreground py-4">Aucun enregistrement</p>
                   ) : (
-                    records.map((record) => (
+                    filteredRecords.map((record) => (
                       <div key={record.id} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
                         <span className="text-sm">
                           {new Date(record.date).toLocaleString("fr-FR", {
