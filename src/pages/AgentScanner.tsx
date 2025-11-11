@@ -96,6 +96,19 @@ const AgentScanner = () => {
 
       currentAgentIdRef.current = user.id;
 
+      // Récupérer les infos de l'élève d'abord
+      const { data: studentProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("student_id", decodedText)
+        .maybeSingle();
+
+      if (profileError || !studentProfile) {
+        toast.error("Élève introuvable");
+        setIsProcessing(false);
+        return;
+      }
+
       // Vérifier si l'élève a déjà été scanné aujourd'hui
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -103,25 +116,12 @@ const AgentScanner = () => {
       const { data: existingRecord } = await supabase
         .from("attendance_records")
         .select("*")
-        .eq("student_id", decodedText)
+        .eq("student_id", studentProfile.id)
         .gte("date", today.toISOString())
         .maybeSingle();
 
       if (existingRecord) {
         toast.error("Cet élève a déjà été scanné aujourd'hui");
-        setIsProcessing(false);
-        return;
-      }
-
-      // Récupérer les infos de l'élève
-      const { data: studentProfile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", decodedText)
-        .single();
-
-      if (profileError || !studentProfile) {
-        toast.error("Élève introuvable");
         setIsProcessing(false);
         return;
       }
