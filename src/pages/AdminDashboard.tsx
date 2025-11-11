@@ -56,7 +56,6 @@ const AdminDashboard = () => {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newUserRole, setNewUserRole] = useState<"student" | "agent">("student");
-  const [newUserStudentId, setNewUserStudentId] = useState("");
   const [newUserDepartment, setNewUserDepartment] = useState("");
 
   useEffect(() => {
@@ -184,6 +183,26 @@ const AdminDashboard = () => {
     setFilteredStudents(filtered);
   };
 
+  const generateStudentId = async () => {
+    const year = new Date().getFullYear();
+    
+    // Récupérer le dernier ID étudiant créé cette année
+    const { data } = await supabase
+      .from("profiles")
+      .select("student_id")
+      .like("student_id", `STU${year}%`)
+      .order("student_id", { ascending: false })
+      .limit(1);
+
+    let nextNumber = 1;
+    if (data && data.length > 0 && data[0].student_id) {
+      const lastNumber = parseInt(data[0].student_id.replace(`STU${year}`, ""));
+      nextNumber = lastNumber + 1;
+    }
+
+    return `STU${year}${nextNumber.toString().padStart(3, "0")}`;
+  };
+
   const handleCreateUser = async () => {
     try {
       const { data: { user }, error: signUpError } = await supabase.auth.signUp({
@@ -201,10 +220,12 @@ const AdminDashboard = () => {
 
       // Update profile with additional info
       if (newUserRole === "student") {
+        const studentId = await generateStudentId();
+        
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
-            student_id: newUserStudentId,
+            student_id: studentId,
             department: newUserDepartment,
           })
           .eq("id", user.id);
@@ -238,7 +259,6 @@ const AdminDashboard = () => {
     setNewUserPassword("");
     setNewUserName("");
     setNewUserRole("student");
-    setNewUserStudentId("");
     setNewUserDepartment("");
   };
 
@@ -513,16 +533,13 @@ const AdminDashboard = () => {
                 </div>
 
                 {newUserRole === "student" && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>ID Étudiant</Label>
-                      <Input
-                        value={newUserStudentId}
-                        onChange={(e) => setNewUserStudentId(e.target.value)}
-                        placeholder="STU2024001"
-                      />
+                  <div className="space-y-4">
+                    <div className="bg-accent/10 p-3 rounded-lg border border-accent/20">
+                      <p className="text-sm text-muted-foreground">
+                        L'ID étudiant sera généré automatiquement au format: <span className="font-mono font-semibold">STU{new Date().getFullYear()}XXX</span>
+                      </p>
                     </div>
-
+                    
                     <div className="space-y-2">
                       <Label>Département</Label>
                       <Select value={newUserDepartment} onValueChange={setNewUserDepartment}>
