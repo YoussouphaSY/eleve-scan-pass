@@ -77,75 +77,220 @@ const AgentScanner = () => {
     }
   };
 
+  // const onScanSuccess = async (decodedText: string) => {
+  //   // Empêcher les scans multiples
+  //   if (isProcessing) {
+  //     console.log("Scan ignoré: traitement en cours");
+  //     return;
+  //   }
+
+  //   try {
+  //     setIsProcessing(true);
+  //     await stopScanning();
+      
+  //     const { data: { user } } = await supabase.auth.getUser();
+  //     if (!user) {
+  //       setIsProcessing(false);
+  //       return;
+  //     }
+
+  //     currentAgentIdRef.current = user.id;
+
+  //     // Récupérer les infos de l'élève d'abord
+  //     const { data: studentProfile, error: profileError } = await supabase
+  //       .from("profiles")
+  //       .select("*")
+  //       .eq("student_id", decodedText)
+  //       .maybeSingle();
+
+  //     if (profileError || !studentProfile) {
+  //       toast.error("Élève introuvable");
+  //       setIsProcessing(false);
+  //       return;
+  //     }
+
+  //     // Vérifier si l'élève a déjà été scanné aujourd'hui
+  //     const today = new Date();
+  //     today.setHours(0, 0, 0, 0);
+      
+  //     const { data: existingRecord } = await supabase
+  //       .from("attendance_records")
+  //       .select("*")
+  //       .eq("student_id", studentProfile.id)
+  //       .gte("date", today.toISOString())
+  //       .maybeSingle();
+
+  //     if (existingRecord) {
+  //       toast.error("Cet élève a déjà été scanné aujourd'hui");
+  //       setIsProcessing(false);
+  //       return;
+  //     }
+
+  //     // Calculer le statut automatiquement en fonction de l'heure
+  //     const now = new Date();
+  //     const hours = now.getHours();
+  //     const minutes = now.getMinutes();
+  //     const currentTime = hours * 60 + minutes;
+  //     const cutoffTime = 8 * 60 + 15;
+
+  //     const status: "present" | "late" = currentTime > cutoffTime ? "late" : "present";
+      
+  //     setCalculatedStatus(status);
+  //     setScannedStudent(studentProfile);
+  //     setShowConfirmDialog(true);
+      
+  //   } catch (error: any) {
+  //     console.error("Error processing scan:", error);
+  //     toast.error("Erreur lors du scan");
+  //     setIsProcessing(false);
+  //   }
+  // };
+
+  // const onScanSuccess = async (decodedText: string) => {
+  //   if (isProcessing) return;
+  //   setIsProcessing(true);
+  //   await stopScanning();
+  
+  //   // Récupérer l’utilisateur connecté (l’agent)
+  //   const { data: { user } } = await supabase.auth.getUser();
+  //   if (!user) {
+  //     setIsProcessing(false);
+  //     return;
+  //   }
+  //   currentAgentIdRef.current = user.id;
+  
+  //   // Chercher le profil par UUID (decodedText)
+  //   const { data: studentProfile, error: profileError } = await supabase
+  //     .from("profiles")
+  //     .select("*")
+  //     .eq("id", decodedText) // <-- ici on compare UUID avec UUID
+  //     .maybeSingle();
+  
+  //   if (profileError || !studentProfile) {
+  //     toast.error("Élève introuvable");
+  //     setIsProcessing(false);
+  //     return;
+  //   }
+  
+  //   // Vérifier si l’élève a déjà été scanné aujourd’hui
+  //   const today = new Date();
+  //   today.setHours(0, 0, 0, 0);
+  
+  //   const { data: existingRecord } = await supabase
+  //     .from("attendance_records")
+  //     .select("*")
+  //     .eq("student_id", studentProfile.id) // UUID
+  //     .gte("date", today.toISOString())
+  //     .maybeSingle();
+  
+  //   if (existingRecord) {
+  //     toast.error("Cet élève a déjà été scanné aujourd'hui");
+  //     setIsProcessing(false);
+  //     return;
+  //   }
+  
+  //   // Calculer le statut automatiquement en fonction de l’heure
+  //   const now = new Date();
+  //   const currentTime = now.getHours() * 60 + now.getMinutes();
+  //   const cutoffTime = 8 * 60 + 15;
+  //   const status: "present" | "late" = currentTime > cutoffTime ? "late" : "present";
+  
+  //   setCalculatedStatus(status);
+  //   setScannedStudent(studentProfile);
+  //   setShowConfirmDialog(true);
+  // };
+  
   const onScanSuccess = async (decodedText: string) => {
-    // Empêcher les scans multiples
+    console.log("QR Code scanné :", decodedText);
+    
     if (isProcessing) {
       console.log("Scan ignoré: traitement en cours");
       return;
     }
-
-    try {
-      setIsProcessing(true);
-      await stopScanning();
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setIsProcessing(false);
-        return;
-      }
-
-      currentAgentIdRef.current = user.id;
-
-      // Récupérer les infos de l'élève d'abord
-      const { data: studentProfile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("student_id", decodedText)
-        .maybeSingle();
-
-      if (profileError || !studentProfile) {
-        toast.error("Élève introuvable");
-        setIsProcessing(false);
-        return;
-      }
-
-      // Vérifier si l'élève a déjà été scanné aujourd'hui
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const { data: existingRecord } = await supabase
-        .from("attendance_records")
-        .select("*")
-        .eq("student_id", studentProfile.id)
-        .gte("date", today.toISOString())
-        .maybeSingle();
-
-      if (existingRecord) {
-        toast.error("Cet élève a déjà été scanné aujourd'hui");
-        setIsProcessing(false);
-        return;
-      }
-
-      // Calculer le statut automatiquement en fonction de l'heure
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
-      const currentTime = hours * 60 + minutes;
-      const cutoffTime = 8 * 60 + 15;
-
-      const status: "present" | "late" = currentTime > cutoffTime ? "late" : "present";
-      
-      setCalculatedStatus(status);
-      setScannedStudent(studentProfile);
-      setShowConfirmDialog(true);
-      
-    } catch (error: any) {
-      console.error("Error processing scan:", error);
-      toast.error("Erreur lors du scan");
+    setIsProcessing(true);
+  
+    await stopScanning();
+  
+    // Récupérer l’utilisateur connecté (l’agent)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      console.error("Erreur récupération utilisateur :", userError);
+      toast.error("Erreur utilisateur");
       setIsProcessing(false);
+      return;
     }
+    if (!user) {
+      console.warn("Aucun utilisateur connecté");
+      setIsProcessing(false);
+      return;
+    }
+  
+    console.log("Utilisateur connecté :", user.id);
+    currentAgentIdRef.current = user.id;
+  
+    // Chercher le profil par UUID (decodedText)
+    const { data: studentProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", decodedText) // UUID
+      .maybeSingle();
+  
+    console.log("Résultat de la requête profil :", studentProfile, profileError);
+  
+    if (profileError) {
+      console.error("Erreur récupération profil :", profileError);
+      toast.error("Erreur lors de la récupération du profil");
+      setIsProcessing(false);
+      return;
+    }
+  
+    if (!studentProfile) {
+      console.warn("Aucun profil trouvé pour cet UUID");
+      toast.error("Élève introuvable");
+      setIsProcessing(false);
+      return;
+    }
+  
+    console.log("Profil trouvé :", studentProfile);
+  
+    // Vérifier si l’élève a déjà été scanné aujourd’hui
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { data: existingRecord, error: recordError } = await supabase
+      .from("attendance_records")
+      .select("*")
+      .eq("student_id", studentProfile.id)
+      .gte("date", today.toISOString())
+      .maybeSingle();
+  
+    console.log("Vérification présence existante :", existingRecord, recordError);
+  
+    if (recordError) {
+      console.error("Erreur vérification présence :", recordError);
+      setIsProcessing(false);
+      return;
+    }
+  
+    if (existingRecord) {
+      toast.error("Cet élève a déjà été scanné aujourd'hui");
+      setIsProcessing(false);
+      return;
+    }
+  
+    // Calcul du statut
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const cutoffTime = 8 * 60 + 15;
+    const status: "present" | "late" = currentTime > cutoffTime ? "late" : "present";
+  
+    console.log("Statut calculé :", status);
+  
+    setCalculatedStatus(status);
+    setScannedStudent(studentProfile);
+    setShowConfirmDialog(true);
   };
-
+  
+  
   const handleConfirmAttendance = async () => {
     if (!scannedStudent || !currentAgentIdRef.current) return;
 
