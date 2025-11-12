@@ -1,73 +1,146 @@
-# Welcome to your Lovable project
+# Système de Gestion de Présence
 
-## Project info
+Application web de gestion de présence avec scan de QR codes, tableaux de bord pour étudiants, agents et administrateurs.
 
-**URL**: https://lovable.dev/projects/9a6cf8ac-a9f9-4d6b-8745-a55786f58a7f
+## Technologies utilisées
 
-## How can I edit this code?
+- **Frontend**: React + TypeScript + Vite
+- **UI**: shadcn-ui + Tailwind CSS
+- **Backend**: Supabase (Base de données PostgreSQL + Authentication + Edge Functions)
+- **Scan QR**: html5-qrcode
 
-There are several ways of editing your application.
+## Utiliser votre propre base de données Supabase
 
-**Use Lovable**
+Par défaut, ce projet utilise Lovable Cloud (Supabase intégré). Pour utiliser votre propre instance Supabase :
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9a6cf8ac-a9f9-4d6b-8745-a55786f58a7f) and start prompting.
+### 1. Créer un projet Supabase
 
-Changes made via Lovable will be committed automatically to this repo.
+1. Créez un compte sur [supabase.com](https://supabase.com)
+2. Créez un nouveau projet
+3. Notez votre **Project URL** et votre **anon/public key**
 
-**Use your preferred IDE**
+### 2. Configurer les variables d'environnement
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Créez un fichier `.env` à la racine du projet avec vos propres credentials :
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```env
+VITE_SUPABASE_URL=https://votre-projet.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=votre-clé-publique-anon
+VITE_SUPABASE_PROJECT_ID=votre-project-id
+```
 
-Follow these steps:
+### 3. Migrer le schéma de base de données
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Exécutez les migrations SQL dans votre projet Supabase (via le SQL Editor) :
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+```sql
+-- Voir les fichiers dans supabase/migrations/ pour le schéma complet
 
-# Step 3: Install the necessary dependencies.
-npm i
+-- Tables principales :
+-- profiles : Profils utilisateurs avec student_id et department
+-- user_roles : Rôles (admin, agent, student)
+-- attendance_records : Enregistrements de présence
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+-- N'oubliez pas d'activer RLS (Row Level Security) sur toutes les tables
+```
+
+### 4. Configurer l'authentification
+
+Dans votre dashboard Supabase :
+1. Allez dans **Authentication > Settings**
+2. Activez **Enable email confirmations** (ou désactivez-le pour le développement)
+3. Configurez les **Email Templates** si nécessaire
+
+### 5. Déployer les Edge Functions (optionnel)
+
+Si vous utilisez des edge functions :
+
+```bash
+# Installer Supabase CLI
+npm install -g supabase
+
+# Se connecter à votre projet
+supabase login
+supabase link --project-ref votre-project-id
+
+# Déployer les functions
+supabase functions deploy
+```
+
+### 6. Mise à jour du fichier config.toml
+
+Mettez à jour `supabase/config.toml` avec votre project_id :
+
+```toml
+project_id = "votre-project-id"
+```
+
+## Installation et développement local
+
+```bash
+# Cloner le repository
+git clone <votre-repo-url>
+cd <nom-du-projet>
+
+# Installer les dépendances
+npm install
+
+# Créer le fichier .env avec vos credentials Supabase
+# (voir section ci-dessus)
+
+# Lancer le serveur de développement
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+L'application sera accessible sur `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Structure du projet
 
-**Use GitHub Codespaces**
+```
+src/
+├── components/       # Composants réutilisables
+│   └── ui/          # Composants shadcn-ui
+├── pages/           # Pages principales
+│   ├── Landing.tsx         # Page d'accueil
+│   ├── Auth.tsx           # Connexion/Inscription
+│   ├── StudentDashboard.tsx  # Tableau de bord étudiant
+│   ├── AgentScanner.tsx     # Scanner de présence (agent)
+│   └── AdminDashboard.tsx   # Gestion administrative
+├── integrations/    # Intégrations externes
+│   └── supabase/    # Client et types Supabase
+└── lib/            # Utilitaires
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+supabase/
+├── migrations/     # Migrations SQL
+└── config.toml    # Configuration Supabase
+```
 
-## What technologies are used for this project?
+## Déploiement
 
-This project is built with:
+### Option 1 : Déploiement via Lovable
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Ouvrez [Lovable](https://lovable.dev/projects/9a6cf8ac-a9f9-4d6b-8745-a55786f58a7f) et cliquez sur **Share → Publish**.
 
-## How can I deploy this project?
+### Option 2 : Déploiement manuel (Vercel, Netlify, etc.)
 
-Simply open [Lovable](https://lovable.dev/projects/9a6cf8ac-a9f9-4d6b-8745-a55786f58a7f) and click on Share -> Publish.
+1. Build le projet : `npm run build`
+2. Déployez le dossier `dist/`
+3. Configurez les variables d'environnement sur votre plateforme
 
-## Can I connect a custom domain to my Lovable project?
+## Schéma de base de données
 
-Yes, you can!
+### Tables principales
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- **profiles** : Informations utilisateurs (student_id, department, full_name)
+- **user_roles** : Rôles des utilisateurs (admin, agent, student)
+- **attendance_records** : Enregistrements de présence (present, late, absent)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Politiques RLS
+
+Toutes les tables utilisent Row Level Security pour sécuriser l'accès aux données selon les rôles utilisateurs.
+
+## Support
+
+Pour toute question sur Lovable : [Documentation Lovable](https://docs.lovable.dev/)
+
+Pour Supabase : [Documentation Supabase](https://supabase.com/docs)
