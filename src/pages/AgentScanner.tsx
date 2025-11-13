@@ -278,16 +278,38 @@ const AgentScanner = () => {
     }
   
     // Calcul du statut
+    // const now = new Date();
+    // const currentTime = now.getHours() * 60 + now.getMinutes();
+    // const cutoffTime = 8 * 60 + 15;
+    // const status: "present" | "late" = currentTime > cutoffTime ? "late" : "present";
+  
+    // console.log("Statut calculé :", status);
+  
+    // setCalculatedStatus(status);
+    // setScannedStudent(studentProfile);
+    // setShowConfirmDialog(true);
+
+    // Calcul du statut au moment du scan
     const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-    const cutoffTime = 8 * 60 + 15;
-    const status: "present" | "late" = currentTime > cutoffTime ? "late" : "present";
-  
-    console.log("Statut calculé :", status);
-  
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // heure actuelle en minutes
+
+    const cutoffPresent = 8 * 60 + 15; // 8h15
+    const cutoffAbsent = 16 * 60;      // 16h00
+
+    let status: "present" | "late" | "absent";
+
+    if (currentTime < cutoffPresent) {
+      status = "present"; // avant 8h15
+    } else if (currentTime < cutoffAbsent) {
+      status = "late"; // entre 8h15 et 16h00
+    } else {
+      status = "absent"; // après 16h
+    }
+
     setCalculatedStatus(status);
     setScannedStudent(studentProfile);
     setShowConfirmDialog(true);
+
   };
   
   
